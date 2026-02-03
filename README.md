@@ -19,13 +19,18 @@ It replaces the previous **single-IMU (MPU6050)** design with a **dual-IMU archi
 - **UART telemetry**
 - **Teensy 4.x carrier socket**
 
----
+
 
 ## 📂 Contents
 
 - `/Hardware` → Schematics, PCB layout, Gerbers
 
----
+## 🧩 System Architecture
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f7d678af-9d7e-4323-9c81-d6843dbee815" width="500">
+</p>
+
+
 
 ## 🧩 Modular UAV Architecture
 
