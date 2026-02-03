@@ -2,7 +2,7 @@
 
 ![Hardware](https://img.shields.io/badge/Hardware-Flight%20Control%20Stage-blue)
 ![PCB](https://img.shields.io/badge/PCB-Custom%20Design-lightgrey)
-![EDA](https://img.shields.io/badge/EDA-KiCad-314CB0?logo=kicad)
+![PCB](https://img.shields.io/badge/PCB-KiCad-lightgrey)
 ![Sensing](https://img.shields.io/badge/Sensing-Dual%20IMU-orange)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular%20Control%20%2F%20Power-lightgrey)
 ![Integration](https://img.shields.io/badge/Integration-Embedded%20Carrier-green)
