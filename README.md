@@ -98,7 +98,7 @@ Dedicated power board:
       <sub>Top View</sub>
     </td>
     <td align="center">
-      <img alt="flight control stage bottom" src="https://github.com/user-attachments/assets/68846fde-b554-45c8-acc2-ae7cef270093" width="520"><br>
+      <img alt="flight control stage bottom" src="https://github.com/user-attachments/assets/75adb4cf-c401-4bad-8cbf-d95335059692" width="520"><br>
       <sub>Bottom View</sub>
     </td>
   </tr>
