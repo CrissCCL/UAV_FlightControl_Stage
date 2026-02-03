@@ -28,6 +28,7 @@ measurement reliability and fault tolerance.
 - `/Hardware` → Schematics, PCB layout, Gerbers
 
 ## 🧩 System Architecture
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/3c0c4e86-03ec-4817-90f4-cec5f8e356ae" width="700">
 </p>
