@@ -1,118 +1,96 @@
-# 🧠🛩️ UAV Control & Navigation Board — Teensy + Dual IMU Upgrade
+# 🧠🛩️ UAV Control & Navigation Board — Teensy Carrier + Dual IMU (I2C)
 
 ![Hardware](https://img.shields.io/badge/Hardware-Control%20%26%20Navigation-blue)
 ![PCB](https://img.shields.io/badge/PCB-KiCad-lightgrey)
-![IMU](https://img.shields.io/badge/IMU-Dual%20IMU-orange)
+![IMU](https://img.shields.io/badge/IMU-BMI088%20%2B%20ICM--42605-orange)
+![Bus](https://img.shields.io/badge/Bus-I2C-lightgrey)
 ![Teensy](https://img.shields.io/badge/MCU-Teensy%204.x-green)
-![RF](https://img.shields.io/badge/RF-RC%20Inputs-lightgrey)
+![RF](https://img.shields.io/badge/RF-1%20RC%20Input-lightgrey)
+![PWM](https://img.shields.io/badge/PWM-4%20Outputs-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-## Overview
 This repository documents the **updated control stage PCB** for a custom UAV platform.
-It replaces the previous **single IMU (MPU6050)** with a **validated Dual-IMU module**,
-while preserving the full I/O required for flight experiments:
+It upgrades the previous **single IMU (MPU6050)** to a **dual-IMU sensing stack**
+(**BMI088 + ICM-42605**) over **I2C**, while preserving the essential flight I/O:
 
-- **RC receiver RF inputs**
-- **UART communication**
-- **PWM outputs** for propulsion (ESCs)
-- **Teensy socket** (carrier-style board)
+- **1× RC input** (radio control)
+- **4× PWM outputs** (ESC / propulsion control)
+- **UART** interface (telemetry / debug / companion link)
+- **Teensy socket** (carrier-style integration)
 
-✅ This control board is **physically and electrically separated** from the power board:
+✅ This control stage is **intentionally separated** from the power board:
 
-- **Power stage** (distribution + regulation): *UAV Power Distribution & Regulation Board*  
-  *(separate repo / already developed and installed)*
+- **Power distribution & regulation** lives on a dedicated PCB
+  (*UAV Power Distribution & Regulation Board — separate repo, already developed and installed*)
 
-## 📂 Contents
-- `/Hardware` →  Schematic, Gerbers.
+
+---
 
 ## ✨ Key Features
 
-- **Dual IMU upgrade** (replacing MPU6050-based sensing)
+- **Dual IMU upgrade**: **BMI088 + ICM-42605** (I2C)
 - **Teensy carrier board** with socketed MCU integration
-- **RC input interface** (radio control signals)
-- **PWM outputs** for ESC/propulsion control
-- **UART connectivity** for telemetry / debugging / companion computer integration
-- Modular architecture: **control stage separated from power stage**
+- **1× RC input** interface for pilot command
+- **4× PWM outputs** for ESCs / propulsion
+- **UART** header for telemetry / debugging / external integration
+- Modular UAV architecture: **control stage isolated from power stage**
 
-
+---
 
 ## 🧩 System Role (Modular UAV Architecture)
 
 This PCB implements the **control + sensing + I/O hub** of the UAV:
 
-- Reads inertial signals from the **Dual IMU module**
-- Reads pilot commands from the **RC receiver**
-- Computes control actions on the Teensy (flight logic / stabilization / experiments)
-- Outputs **PWM** to ESCs
-- Streams telemetry over **UART** to external systems (e.g., Raspberry Pi / logger)
+- Reads inertial measurements from the **Dual IMU** via **I2C**
+- Reads pilot command from **1 RC input**
+- Runs control / stabilization logic on **Teensy**
+- Drives propulsion through **4 PWM outputs**
+- Streams telemetry through **UART** when required
 
-> The **power distribution and regulation** are intentionally isolated on a dedicated board
-to improve robustness, power integrity, and maintainability.
+> This board corresponds to the **matured control electronics revision**
+used in a **v5 control architecture development cycle**.
+Given the current maturity and prior validation, the board is intended to be
+**installed directly on the UAV** for full-system integration testing.
 
+---
 
+## 🔌 Interfaces (I/O Summary)
+
+| Interface | Quantity | Notes |
+|---|---:|---|
+| Dual IMU (I2C) | 1 | **BMI088 + ICM-42605** sensing stack |
+| RC Input | 1 | Radio control command input |
+| PWM Outputs | 4 | ESC / propulsion control channels |
+| UART | 1 | Telemetry / debug / companion computer |
+| Teensy Socket | 1 | Teensy 4.x carrier integration |
+
+---
 
 ## 📦 Repository Contents
 
 - **/hardware/kicad/** → KiCad project (schematic + PCB)
 - **/hardware/gerbers/** → manufacturing outputs (Gerbers, drill, etc.)
 - **/hardware/bom/** → BOM and assembly references
-- **/docs/** → bring-up notes, wiring, revision notes, images
-- **/firmware_examples/** → basic Teensy smoke tests (pinout, IMU comms, PWM outputs)
+- **/docs/** → images, wiring notes, revision notes (optional)
+- **/firmware_examples/** → minimal interface tests (optional)
 
-
-
-## 🔌 Interfaces (I/O Summary)
-
-| Interface | Description |
-|---|---|
-| Dual IMU | Sensor upgrade module integrated/connected to this board |
-| RC Inputs | Inputs from RF receiver (pilot commands) |
-| PWM Outputs | Outputs to ESCs / propulsion channels |
-| UART | Telemetry / debugging / companion computer link |
-| Teensy Socket | Socketed MCU integration for easy swap/testing |
-
-
-
-## 🧪 Bring-up Checklist (Quick)
-
-1. Visual inspection (solder bridges, polarity, connectors)
-2. Power-up with current-limited supply (if applicable)
-3. Verify **3.3V/5V rails** (as designed)
-4. Teensy boot + basic pin test
-5. Validate **UART link**
-6. Validate **RC inputs** (pulse width / edge integrity)
-7. Validate **PWM outputs** (servo/ESC signal generation)
-8. Validate Dual IMU comms + basic fusion sanity checks
-
-
+---
 
 ## 📷 Hardware Photos
 
-> Add images under: `docs/images/`
-- Top view (assembled)
-- Bottom view
-- Installed on UAV (if available)
-- Connector close-ups (Teensy socket, PWM, RC, UART, IMU)
+Add images under: `docs/images/`
 
 Example:
 ```md
 ![Assembled Board](docs/images/board_assembled.jpg)
+![Installed on UAV](docs/images/installed_on_uav.jpg)
 ```
-
-## 🛣️ Roadmap
-
-- Upload KiCad project + fabrication outputs
-- Publish wiring diagram (RC / ESC / UART / IMU)
-- Add firmware smoke tests (Teensy + IMU + PWM)
-- Flight-test integration notes (with Power Stage board)
--  Optional: EMI/power integrity notes (separation benefits)
 
 ## 🔗 Related Repositories
 
-- UAV platform main repository: (add link if you want this to be referenced by DIY_UAV)
-- Power stage PCB: UAV Power Distribution & Regulation Board (link to your repo here)
-- Dual IMU module repository: (link to your Dual IMU repo here)
-
+- UAV platform main repository: (link your DIY_UAV repo)
+- Power stage PCB: (link your UAV Power Distribution & Regulation Board repo)
+- Dual IMU module repository: (link your Dual IMU repo if it’s separate)
 
 ⚠️ Disclaimer
 
