@@ -28,9 +28,8 @@ It replaces the previous **single-IMU (MPU6050)** design with a **dual-IMU archi
 
 ## 🧩 System Architecture
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/f7d678af-9d7e-4323-9c81-d6843dbee815" width="700">
+  <img src="https://github.com/user-attachments/assets/3c0c4e86-03ec-4817-90f4-cec5f8e356ae" width="700">
 </p>
-
 
 
 ## 🧩 Modular UAV Architecture
