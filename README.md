@@ -10,10 +10,14 @@
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ## Overview
+
 This repository documents the **Flight Control Stage PCB** of my modular UAV platform.
 
 It replaces the previous **single-IMU (MPU6050)** design with a **dual-IMU architecture**
-(**BMI088 + ICM-42605**) connected via **I2C**, while preserving all real-time flight interfaces:
+(**BMI088 + ICM-42605**) connected through **two independent I²C buses**, while preserving
+all real-time flight interfaces.
+
+**Platform:** Teensy 4.x · Dual IMU · I²C ×2 · PWM ×4 · UART · 5V regulated supply
 
 - **1× RC input** (radio control command)
 - **4× PWM outputs** (ESC / propulsion control)
@@ -45,7 +49,7 @@ The UAV electronics are intentionally divided into **two independent hardware st
 
 This board integrates:
 
-- Teensy 4.x carrier board (control MCU)
+- Teensy 4.x carrier board (real-time control MCU)
 - Dual IMU module (BMI088 + ICM-42605)
 - RC input interface
 - 4× PWM outputs for ESCs
@@ -59,17 +63,18 @@ Separating **control electronics** from **power electronics** provides:
 - improved signal integrity  
 - safer power handling  
 - easier maintenance and board replacement  
-- faster hardware iteration  
+- faster hardware iteration
+
+
 
 Dedicated power board:  
 👉 https://github.com/CrissCCL/UAV_PowerStage
 
 
-
 ## ✨ Key Features
 
-- Dual IMU (**BMI088 + ICM-42605**) over **I2C**
-- Teensy 4.x socketed carrier design
+- Dual IMU redundancy (**BMI088 + ICM-42605**) over **I²C ×2**
+- Real-time embedded control on Teensy 4.x
 - 1× RC input
 - 4× PWM outputs
 - UART telemetry interface
@@ -78,7 +83,8 @@ Dedicated power board:
 
 ---
 
-## 🔌 Interfaces (I/O Summary)
+
+## 🔌 Hardware Interfaces
 
 | Interface | Qty | Description |
 |-----------|----|-------------|
