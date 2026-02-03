@@ -9,6 +9,7 @@
 ![PWM](https://img.shields.io/badge/PWM-4%20Outputs-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
+## Overview
 This repository documents the **Flight Control Stage PCB** of my modular UAV platform.
 
 It replaces the previous **single-IMU (MPU6050)** design with a **dual-IMU architecture**
