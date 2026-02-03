@@ -1,6 +1,6 @@
 # 🧠🛩️ UAV Control & Navigation Board — Teensy Carrier + Dual IMU (I2C)
 
-![Hardware](https://img.shields.io/badge/Hardware-Control%20%26%20Navigation-blue)
+![Hardware](https://img.shields.io/badge/Hardware-Control%20Stage-blue)
 ![PCB](https://img.shields.io/badge/PCB-KiCad-lightgrey)
 ![IMU](https://img.shields.io/badge/IMU-BMI088%20%2B%20ICM--42605-orange)
 ![Bus](https://img.shields.io/badge/Bus-I2C-lightgrey)
@@ -9,94 +9,107 @@
 ![PWM](https://img.shields.io/badge/PWM-4%20Outputs-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-This repository documents the **updated control stage PCB** for a custom UAV platform.
-It upgrades the previous **single IMU (MPU6050)** to a **dual-IMU sensing stack**
-(**BMI088 + ICM-42605**) over **I2C**, while preserving the essential flight I/O:
+This repository documents the **control & navigation stage PCB** of my modular UAV platform.
 
-- **1× RC input** (radio control)
+It upgrades the previous **single-IMU (MPU6050)** design to a **dual-IMU architecture**
+based on **BMI088 + ICM-42605**, connected through **I2C**, while preserving the essential
+real-time flight interfaces:
+
+- **1× RC input** (radio control command)
 - **4× PWM outputs** (ESC / propulsion control)
-- **UART** interface (telemetry / debug / companion link)
-- **Teensy socket** (carrier-style integration)
+- **UART telemetry**
+- **Teensy 4.x carrier socket**
 
-✅ This control stage is **intentionally separated** from the power board:
-
-- **Power distribution & regulation** lives on a dedicated PCB
-  (*UAV Power Distribution & Regulation Board — separate repo, already developed and installed*)
+## 📂 Contents
+- `/Hardware` →  Schematic, Gerbers.
 
 
----
+## 🧩 Modular UAV Architecture
+
+The UAV electronics are intentionally split into **independent functional boards**:
+
+| Stage | Responsibility |
+|-------|----------------|
+| Power Stage | Distribution & regulation |
+| Control Stage (this repo) | Sensing + control + I/O |
+| IMU Module | Redundant inertial sensing |
+
+This separation improves:
+
+- electrical noise isolation  
+- power integrity  
+- maintainability  
+- faster hardware iteration  
+
+The dedicated power board is available here:  
+👉 https://github.com/CrissCCL/UAV_PowerStage
+
+
 
 ## ✨ Key Features
 
-- **Dual IMU upgrade**: **BMI088 + ICM-42605** (I2C)
-- **Teensy carrier board** with socketed MCU integration
-- **1× RC input** interface for pilot command
-- **4× PWM outputs** for ESCs / propulsion
-- **UART** header for telemetry / debugging / external integration
-- Modular UAV architecture: **control stage isolated from power stage**
+- Dual IMU (**BMI088 + ICM-42605**) over **I2C**
+- Teensy 4.x socketed carrier design
+- 1× RC input interface
+- 4× PWM outputs for ESCs
+- UART header for telemetry/debug
+- Fully separated from the power stage
+- Mature **V5 hardware revision**, validated through multiple control iterations
 
----
-
-## 🧩 System Role (Modular UAV Architecture)
-
-This PCB implements the **control + sensing + I/O hub** of the UAV:
-
-- Reads inertial measurements from the **Dual IMU** via **I2C**
-- Reads pilot command from **1 RC input**
-- Runs control / stabilization logic on **Teensy**
-- Drives propulsion through **4 PWM outputs**
-- Streams telemetry through **UART** when required
-
-> This board corresponds to the **matured control electronics revision**
-used in a **v5 control architecture development cycle**.
-Given the current maturity and prior validation, the board is intended to be
-**installed directly on the UAV** for full-system integration testing.
-
----
 
 ## 🔌 Interfaces (I/O Summary)
 
-| Interface | Quantity | Notes |
-|---|---:|---|
-| Dual IMU (I2C) | 1 | **BMI088 + ICM-42605** sensing stack |
-| RC Input | 1 | Radio control command input |
-| PWM Outputs | 4 | ESC / propulsion control channels |
-| UART | 1 | Telemetry / debug / companion computer |
-| Teensy Socket | 1 | Teensy 4.x carrier integration |
+| Interface | Qty | Description |
+|-----------|----|-------------|
+| Dual IMU (I2C) | 1 | Redundant inertial sensing |
+| RC Input | 1 | Pilot command |
+| PWM Outputs | 4 | Propulsion control |
+| UART | 1 | Telemetry / debug |
+| Teensy Socket | 1 | MCU carrier |
 
----
 
-## 📦 Repository Contents
 
-- **/hardware/kicad/** → KiCad project (schematic + PCB)
-- **/hardware/gerbers/** → manufacturing outputs (Gerbers, drill, etc.)
-- **/hardware/bom/** → BOM and assembly references
-- **/docs/** → images, wiring notes, revision notes (optional)
-- **/firmware_examples/** → minimal interface tests (optional)
+## 🖼️ PCB Render Visualization
 
----
+<table>
+  <tr>
+    <td align="center">
+      <img alt="flight control stage dron_v5 top" src="https://github.com/user-attachments/assets/406f617d-9878-42c9-9c5d-0eda53a336fc" width="550"><br>
+      <sub> flight control stage V5 – Top View </sub>
+    </td>
+    <td align="center">
+        <img  alt="flight control stage dron_v5 bottom" src="https://github.com/user-attachments/assets/68846fde-b554-45c8-acc2-ae7cef270093" width="550"><br>
+      <sub> Flight control stage PCB V5 – Bottom View </sub>
+    </td>
+  </tr>
+</table>
 
-## 📷 Hardware Photos
 
-Add images under: `docs/images/`
+## ⚡ Physical Prototype (V5 Installed on UAV)
 
-Example:
-```md
-![Assembled Board](docs/images/board_assembled.jpg)
-![Installed on UAV](docs/images/installed_on_uav.jpg)
-```
+The **V5 prototype** is directly integrated into the UAV for **full-system validation**.
+
+Given the maturity of the control architecture, this board is deployed directly for:
+
+- flight control testing  
+- system integration  
+- real-time experiments  
+
+Add your real photos under:
+
+
+
 
 ## 🔗 Related Repositories
 
-- UAV platform main repository: (link your DIY_UAV repo)
-- Power stage PCB: (link your UAV Power Distribution & Regulation Board repo)
-- Dual IMU module repository: (link your Dual IMU repo if it’s separate)
+- UAV platform main repository: https://github.com/CrissCCL/DIY_UAV
+- Power stage PCB: https://github.com/CrissCCL/UAV_PowerStage
+- Dual IMU module repository: https://github.com/CrissCCL/UAV_Dual_IMU
 
-⚠️ Disclaimer
+## ⚠️ Disclaimer
 
-This project is shared for educational and experimental purposes.
-Use at your own risk. Always follow safe practices when working with UAV propulsion systems.
-
+Educational and experimental use only.
+Always follow safe practices when working with UAV propulsion systems.
 
 ## 🤝 Support Projects
 
