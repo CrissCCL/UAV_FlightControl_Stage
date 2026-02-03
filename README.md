@@ -77,14 +77,14 @@ to improve robustness, power integrity, and maintainability.
 
 1. Visual inspection (solder bridges, polarity, connectors)
 2. Power-up with current-limited supply (if applicable)
-3. Verify **3V3/5V rails** (as designed)
+3. Verify **3.3V/5V rails** (as designed)
 4. Teensy boot + basic pin test
 5. Validate **UART link**
 6. Validate **RC inputs** (pulse width / edge integrity)
 7. Validate **PWM outputs** (servo/ESC signal generation)
 8. Validate Dual IMU comms + basic fusion sanity checks
 
-Bring-up notes: see [`/docs/bringup/`](./docs/bringup)
+
 
 ## 📷 Hardware Photos
 
