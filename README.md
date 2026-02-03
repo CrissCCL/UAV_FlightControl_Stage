@@ -82,7 +82,7 @@ Dedicated power board:
 
 | Interface | Qty | Description |
 |-----------|----|-------------|
-| Dual IMU (I2C) | 2 | Redundant inertial sensing |
+| Dual IMU (BMI088 + ICM-42605) | 1 | Two independent I²C buses |
 | RC Input | 1 | Pilot command |
 | PWM Outputs | 4 | Propulsion control |
 | UART | 1 | Telemetry / debug |
@@ -143,5 +143,3 @@ https://www.patreon.com/c/CrissCCL
 ## 📜 License
 
 MIT License
-
-
