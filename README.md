@@ -1,28 +1,27 @@
 # 🧠🛩️ UAV Flight Control Stage — Teensy Carrier + Dual IMU (I2C)
 
 ![Hardware](https://img.shields.io/badge/Hardware-Flight%20Control%20Stage-blue)
+![Embedded](https://img.shields.io/badge/Embedded-Real--Time%20Control-green)
+![Sensing](https://img.shields.io/badge/Sensing-Dual%20IMU-orange)
+![Architecture](https://img.shields.io/badge/Architecture-Modular%20Control%20%2F%20Power-lightgrey)
 ![PCB](https://img.shields.io/badge/PCB-KiCad-lightgrey)
-![IMU](https://img.shields.io/badge/IMU-BMI088%20%2B%20ICM--42605-orange)
-![Bus](https://img.shields.io/badge/Bus-I2C-lightgrey)
-![Teensy](https://img.shields.io/badge/MCU-Teensy%204.x-green)
-![RF](https://img.shields.io/badge/RF-1%20RC%20Input-lightgrey)
-![PWM](https://img.shields.io/badge/PWM-4%20Outputs-lightgrey)
+![Firmware](https://img.shields.io/badge/Firmware-C%2FC%2B%2B-critical)
+![Platform](https://img.shields.io/badge/Platform-UAV%20Testbed-6f42c1)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 
 ## Overview
 
-This repository documents the **Flight Control Stage PCB** of my modular UAV platform.
+This repository documents the **Flight Control Stage PCB** of a modular UAV platform,
+designed as a dedicated **embedded real-time control and sensing unit**.
 
-It replaces the previous **single-IMU (MPU6050)** design with a **dual-IMU architecture**
-(**BMI088 + ICM-42605**) connected through **two independent I²C buses**, while preserving
-all real-time flight interfaces.
+The board concentrates all time-critical functions — inertial sensing, command input,
+actuator outputs, and telemetry — into a single carrier, while keeping the **power
+distribution stage electrically isolated** to improve signal integrity and system robustness.
 
-**Platform:** Teensy 4.x · Dual IMU · I²C ×2 · PWM ×4 · UART · 5V regulated supply
-
-- **1× RC input** (radio control command)
-- **4× PWM outputs** (ESC / propulsion control)
-- **UART telemetry**
-- **Teensy 4.x carrier socket**
+Compared to the previous single-IMU design, this revision introduces a **redundant dual-IMU
+architecture (BMI088 + ICM-42605)** connected through independent I²C buses, enabling
+sensor validation, fault tolerance, and improved estimation reliability.
 
 
 
