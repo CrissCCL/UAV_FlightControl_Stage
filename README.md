@@ -64,7 +64,7 @@ Separating **control electronics** from **power electronics** provides:
 Dedicated power board:  
 👉 https://github.com/CrissCCL/UAV_PowerStage
 
----
+
 
 ## ✨ Key Features
 
@@ -88,7 +88,6 @@ Dedicated power board:
 | UART | 1 | Telemetry / debug |
 | Teensy Socket | 1 | MCU carrier |
 
----
 
 ## 🖼️ PCB Render Visualization
 
@@ -105,7 +104,7 @@ Dedicated power board:
   </tr>
 </table>
 
----
+
 
 ## ⚡ Physical Prototype (V5 Installed on UAV)
 
@@ -118,8 +117,6 @@ Given the maturity of the control architecture, this stage is deployed directly 
 - real-time experimentation  
 
 You may place real photos under:
-
-
 
 
 
