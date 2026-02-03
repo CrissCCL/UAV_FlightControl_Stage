@@ -7,6 +7,7 @@
 ![RF](https://img.shields.io/badge/RF-RC%20Inputs-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
+## Overview
 This repository documents the **updated control stage PCB** for a custom UAV platform.
 It replaces the previous **single IMU (MPU6050)** with a **validated Dual-IMU module**,
 while preserving the full I/O required for flight experiments:
@@ -21,7 +22,8 @@ while preserving the full I/O required for flight experiments:
 - **Power stage** (distribution + regulation): *UAV Power Distribution & Regulation Board*  
   *(separate repo / already developed and installed)*
 
-
+## 📂 Contents
+- `/Hardware` →  Schematic, Gerbers.
 
 ## ✨ Key Features
 
