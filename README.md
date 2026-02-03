@@ -1,27 +1,26 @@
 # 🧠🛩️ UAV Flight Control Stage — Teensy Carrier + Dual IMU (I2C)
 
 ![Hardware](https://img.shields.io/badge/Hardware-Flight%20Control%20Stage-blue)
-![Embedded](https://img.shields.io/badge/Embedded-Real--Time%20Control-green)
+![PCB](https://img.shields.io/badge/PCB-Custom%20Design-lightgrey)
+![EDA](https://img.shields.io/badge/EDA-KiCad-314CB0?logo=kicad)
 ![Sensing](https://img.shields.io/badge/Sensing-Dual%20IMU-orange)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular%20Control%20%2F%20Power-lightgrey)
-![PCB](https://img.shields.io/badge/PCB-KiCad-lightgrey)
-![Firmware](https://img.shields.io/badge/Firmware-C%2FC%2B%2B-critical)
-![Platform](https://img.shields.io/badge/Platform-UAV%20Testbed-6f42c1)
+![Integration](https://img.shields.io/badge/Integration-Embedded%20Carrier-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 
 ## Overview
 
-This repository documents the **Flight Control Stage PCB** of a modular UAV platform,
-designed as a dedicated **embedded real-time control and sensing unit**.
+This repository documents the **Flight Control Stage PCB**, a custom carrier board
+designed to integrate sensing, command, and actuation interfaces for a modular UAV platform.
 
-The board concentrates all time-critical functions — inertial sensing, command input,
-actuator outputs, and telemetry — into a single carrier, while keeping the **power
-distribution stage electrically isolated** to improve signal integrity and system robustness.
+The goal of this stage is to provide a **clean and reliable hardware foundation**
+for embedded flight control electronics, concentrating all signal routing and I/O
+on a dedicated board while keeping the **power distribution stage electrically separated**.
 
-Compared to the previous single-IMU design, this revision introduces a **redundant dual-IMU
-architecture (BMI088 + ICM-42605)** connected through independent I²C buses, enabling
-sensor validation, fault tolerance, and improved estimation reliability.
+This revision replaces the previous single-IMU layout with a **redundant dual-IMU
+architecture (BMI088 + ICM-42605)** connected through independent I²C buses to improve
+measurement reliability and fault tolerance.
 
 
 
