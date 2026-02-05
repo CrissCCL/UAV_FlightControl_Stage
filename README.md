@@ -120,9 +120,9 @@ Given the maturity of the control architecture, this stage is deployed directly 
 - system integration  
 - real-time experimentation  
 
-You may place real photos under:
-
->comming soon...
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e22be73f-2c0d-4ca7-a676-afc88914c077" width="400">
+</p>
 
 
 ## 🔗 Related Repositories
