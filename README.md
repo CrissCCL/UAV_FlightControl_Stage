@@ -27,7 +27,7 @@ This hardware revision has been validated using a **Teensy 4.0** microcontroller
 ## 📂 Contents
 
 - `/Hardware` → Schematics, PCB layout, Gerbers
-- `/Firmware` → Embedded test firmware (dual-IMU fault injection, validation utilities)
+- `/test_dual_angle_failover` → Embedded test firmware (dual-IMU fault injection, validation utilities)
 
 ## 🧩 System Architecture
 
