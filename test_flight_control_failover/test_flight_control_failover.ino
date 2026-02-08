@@ -12,19 +12,19 @@ enum ImuSelect : uint8_t;
   Dual IMU (BMI088 + ICM-42605) + Auto Failover + Fault Injection (Serial "F")
   Target: Teensy 4.x
 
-  SERIAL OUT (CSV 10 columnas):
+  SERIAL OUT (CSV 10 columns):
     rollP,pitchP,bmi_roll,bmi_pitch,icm_roll,icm_pitch,dRoll,dPitch,mismatch,primary
     primary: 0=BMI, 1=ICM
 
   SERIAL IN (commands, ending in '\n'):
-    F0             -> sin fallas
+    F0             -> no faults
     F1             -> BMI dead (bmi_data_ok=0)
     F2             -> ICM dead (icm_data_ok=0)
     F3             -> BMI corrupt (mismatch)
     F4             -> ICM corrupt (mismatch)
-    F5             -> BMI stuck (ICM freezing)
-    F6             -> ICM stuck (ICM freezing)
-    F3,5000        -> apply F3 for 5000 ms, return to F0
+    F5             -> BMI stuck (freezing)
+    F6             -> ICM stuck (freezing)
+    F3,5000        -> apply F3 for 5000 ms, then return to F0
   =====================================================
 */
 
@@ -48,7 +48,7 @@ enum FaultMode : uint8_t {
 };
 
 static FaultMode faultMode = FAULT_NONE;
-static uint32_t fault_until_ms = 0; // 0 = infinito hasta nuevo comando
+static uint32_t fault_until_ms = 0; // 0=infinite
 
 static void set_fault(FaultMode m, uint32_t duration_ms) {
   faultMode = m;
@@ -69,9 +69,8 @@ static const uint8_t BMI_ACC_ADDR = 0x18;
 static const uint8_t BMI_GYR_ADDR = 0x68;
 static const uint8_t ICM_ADDR     = 0x69;
 
-// I2C clocks
-static const uint32_t I2C0_FREQ = 400000; // Wire  (BMI)
-static const uint32_t I2C1_FREQ = 100000; // Wire1 (ICM robust)
+static const uint32_t I2C0_FREQ = 400000; // Wire
+static const uint32_t I2C1_FREQ = 100000; // Wire1 robust
 
 // =====================================================
 // State flags
@@ -79,9 +78,13 @@ static const uint32_t I2C1_FREQ = 100000; // Wire1 (ICM robust)
 bool bmi_ok=false, icm_ok=false;
 bool bmi_data_ok=false, icm_data_ok=false;
 
-// Units per IMU
-float bmi_ax=0,bmi_ay=0,bmi_az=0, bmi_gx=0,bmi_gy=0,bmi_gz=0; // g, deg/s
-float icm_ax=0,icm_ay=0,icm_az=0, icm_gx=0,icm_gy=0,icm_gz=0; // g, deg/s
+// Units per IMU (AFTER fault)
+float bmi_ax=0,bmi_ay=0,bmi_az=0, bmi_gx=0,bmi_gy=0,bmi_gz=0;
+float icm_ax=0,icm_ay=0,icm_az=0, icm_gx=0,icm_gy=0,icm_gz=0;
+
+// RAW copies (BEFORE fault) -> for reliable gating
+static float bmi_ax_raw=0,bmi_ay_raw=0,bmi_az_raw=0, bmi_gx_raw=0,bmi_gy_raw=0,bmi_gz_raw=0;
+static float icm_ax_raw=0,icm_ay_raw=0,icm_az_raw=0, icm_gx_raw=0,icm_gy_raw=0,icm_gz_raw=0;
 
 // Helpers
 static inline int16_t le16(uint8_t lsb, uint8_t msb) { return (int16_t)((msb << 8) | lsb); }
@@ -89,7 +92,7 @@ static inline int16_t be16(uint8_t msb, uint8_t lsb) { return (int16_t)((msb << 
 static inline float   rad2deg(float r){ return r * 57.2957795f; }
 
 // =====================================================
-// BMI088 regs
+// BMI regs
 // =====================================================
 static const uint8_t BMI_ACC_DATA_X_L  = 0x12;
 static const uint8_t BMI_ACC_RANGE     = 0x41;
@@ -104,7 +107,7 @@ static const uint8_t BMI_GYR_LPM1      = 0x11;
 static const uint8_t BMI_GYR_SOFTRESET = 0x14;
 
 // =====================================================
-// ICM-42605 regs (Bank0)
+// ICM regs
 // =====================================================
 static const uint8_t ICM_BANK_SEL       = 0x76;
 static const uint8_t ICM_DEVICE_CONFIG  = 0x11;
@@ -117,7 +120,7 @@ static const uint8_t ICM_ACCEL_DATA_X1  = 0x1F;
 static const uint8_t ICM_GYRO_DATA_X1   = 0x25;
 
 // =====================================================
-// Wire (BMI) helpers
+// Wire helpers (BMI)
 // =====================================================
 static bool w_write8(uint8_t addr, uint8_t reg, uint8_t val) {
   Wire.beginTransmission(addr);
@@ -136,7 +139,7 @@ static bool w_readN(uint8_t addr, uint8_t startReg, uint8_t *buf, size_t n) {
 }
 
 // =====================================================
-// Wire1 (ICM) robust helpers
+// Wire1 helpers (ICM)
 // =====================================================
 static bool w1_write8_stop(uint8_t addr, uint8_t reg, uint8_t val) {
   Wire1.beginTransmission(addr);
@@ -294,6 +297,13 @@ static void imu_init() {
 static void imu_update() {
   bmi_data_ok = bmi_read_units(bmi_ax,bmi_ay,bmi_az, bmi_gx,bmi_gy,bmi_gz);
   icm_data_ok = icm_read_units(icm_ax,icm_ay,icm_az, icm_gx,icm_gy,icm_gz);
+
+  // Save RAW before applying faults
+  bmi_ax_raw=bmi_ax; bmi_ay_raw=bmi_ay; bmi_az_raw=bmi_az;
+  bmi_gx_raw=bmi_gx; bmi_gy_raw=bmi_gy; bmi_gz_raw=bmi_gz;
+
+  icm_ax_raw=icm_ax; icm_ay_raw=icm_ay; icm_az_raw=icm_az;
+  icm_gx_raw=icm_gx; icm_gy_raw=icm_gy; icm_gz_raw=icm_gz;
 }
 
 // =====================================================
@@ -321,12 +331,13 @@ static const float GATE_ACC_G    = 0.20f;
 static bool is_dynamic_motion() {
   if (!(bmi_data_ok && icm_data_ok)) return false;
 
-  float gB = sqrtf(bmi_gx*bmi_gx + bmi_gy*bmi_gy + bmi_gz*bmi_gz);
-  float gI = sqrtf(icm_gx*icm_gx + icm_gy*icm_gy + icm_gz*icm_gz);
+  // IMPORTANT: use RAW (no faults) so gating is not affected by injected bias
+  float gB = sqrtf(bmi_gx_raw*bmi_gx_raw + bmi_gy_raw*bmi_gy_raw + bmi_gz_raw*bmi_gz_raw);
+  float gI = sqrtf(icm_gx_raw*icm_gx_raw + icm_gy_raw*icm_gy_raw + icm_gz_raw*icm_gz_raw);
   float gMin = min(gB, gI);
 
-  float aB = sqrtf(bmi_ax*bmi_ax + bmi_ay*bmi_ay + bmi_az*bmi_az);
-  float aI = sqrtf(icm_ax*icm_ax + icm_ay*icm_ay + icm_az*icm_az);
+  float aB = sqrtf(bmi_ax_raw*bmi_ax_raw + bmi_ay_raw*bmi_ay_raw + bmi_az_raw*bmi_az_raw);
+  float aI = sqrtf(icm_ax_raw*icm_ax_raw + icm_ay_raw*icm_ay_raw + icm_az_raw*icm_az_raw);
   float aAvg = 0.5f * (aB + aI);
 
   return (gMin > GATE_GYRO_DPS) || (fabsf(aAvg - 1.0f) > GATE_ACC_G);
@@ -391,7 +402,7 @@ static void maybe_failover_on_mismatch() {
 }
 
 // =====================================================
-// Serial parser for F commands (expects '\n')
+// Serial parser
 // =====================================================
 static void parse_serial_fault_cmd() {
   static char buf[48];
@@ -428,14 +439,15 @@ static void parse_serial_fault_cmd() {
 
 // =====================================================
 // Apply fault effects AFTER reading sensors
-// - DEAD: marks data_ok false
-// - STUCK: freezes read values
-// - CORRUPT: slow drift in angles (does NOT touch ax/ay/az -> does not trigger gating)
 // =====================================================
-static void apply_faults_to_samples() {
+static void apply_faults() {
   static bool bmi_stuck_init=false, icm_stuck_init=false;
   static float bmi_ax_s,bmi_ay_s,bmi_az_s,bmi_gx_s,bmi_gy_s,bmi_gz_s;
   static float icm_ax_s,icm_ay_s,icm_az_s,icm_gx_s,icm_gy_s,icm_gz_s;
+
+  // Bias for CORRUPT: large enough to overcome ALPHA
+  // With ALPHA=0.98 and dt~0.01, a 25 dps bias -> approx ~12 deg offset (fast mismatch on the table)
+  const float CORRUPT_GYRO_BIAS_DPS = 25.0f;
 
   switch (faultMode) {
     case FAULT_NONE:
@@ -449,6 +461,21 @@ static void apply_faults_to_samples() {
 
     case FAULT_ICM_DEAD:
       icm_data_ok = false;
+      break;
+
+    case FAULT_BMI_CORRUPT:
+      if (bmi_data_ok) {
+        // Bias on gyro used by the filter (does not affect gating because gating uses *_raw)
+        bmi_gx += CORRUPT_GYRO_BIAS_DPS;
+        bmi_gy -= 0.7f * CORRUPT_GYRO_BIAS_DPS;
+      }
+      break;
+
+    case FAULT_ICM_CORRUPT:
+      if (icm_data_ok) {
+        icm_gx -= CORRUPT_GYRO_BIAS_DPS;
+        icm_gy += 0.7f * CORRUPT_GYRO_BIAS_DPS;
+      }
       break;
 
     case FAULT_BMI_STUCK:
@@ -474,28 +501,6 @@ static void apply_faults_to_samples() {
         icm_gx=icm_gx_s; icm_gy=icm_gy_s; icm_gz=icm_gz_s;
       }
       break;
-
-    case FAULT_BMI_CORRUPT:
-    case FAULT_ICM_CORRUPT:
-      // It is applied after calculating angles (see loop) so as not to affect gating
-      break;
-  }
-}
-
-// Slow drift (deg/s) applied to the roll/pitch of the failed sensor
-// This is realistic “soft-fail”: data responds, but becomes consistently misaligned at rest.
-static void apply_corrupt_drift_to_angles(float dt) {
-  // Adjust these values ​​according to how quickly you want the mismatch to appear.
-  // With 0.6 deg/s, in ~2 s you already have ~1.2 deg of error; with 3-4 s it exceeds 10 deg.
-  const float DRIFT_DEG_S = 0.8f;
-
-  // "Smooth" drift (no noise) so that the counter rises steadily
-  if (faultMode == FAULT_BMI_CORRUPT && bmi_data_ok) {
-    bmi_roll  += DRIFT_DEG_S * dt;
-    bmi_pitch -= 0.7f * DRIFT_DEG_S * dt;
-  } else if (faultMode == FAULT_ICM_CORRUPT && icm_data_ok) {
-    icm_roll  -= DRIFT_DEG_S * dt;
-    icm_pitch += 0.7f * DRIFT_DEG_S * dt;
   }
 }
 
@@ -513,23 +518,18 @@ void loop() {
   parse_serial_fault_cmd();
   fault_tick_auto_clear();
 
-  // dt (para filtros y drift)
   uint32_t t_now = micros();
   float dt = (t_now - t_prev_us) * 1e-6f;
   if (dt <= 0) dt = 0.005f;
   if (dt > 0.05f) dt = 0.005f;
   t_prev_us = t_now;
 
-  // 1) Read both sensors
   imu_update();
+  apply_faults();
 
-  // 2) Apply flaws to the samples (dead / stuck)
-  apply_faults_to_samples();
-
-  // 3) Immediate failover if primary dies
+  // Immediate failover if the primary dies
   force_failover_if_primary_dead();
 
-  // 4) Complementary angles
   float bmi_roll_acc  = rad2deg(atan2f(bmi_ay, sqrtf(bmi_ax*bmi_ax + bmi_az*bmi_az)));
   float bmi_pitch_acc = -rad2deg(atan2f(bmi_ax, sqrtf(bmi_ay*bmi_ay + bmi_az*bmi_az)));
 
@@ -545,14 +545,9 @@ void loop() {
     icm_pitch = ALPHA*(icm_pitch + icm_gy*dt) + (1.0f-ALPHA)*icm_pitch_acc;
   }
 
-  // 5) CORRUPT: Slow drift at angles (does NOT touch acc/gyro -> gating remains healthy)
-  apply_corrupt_drift_to_angles(dt);
-
-  // 6) dRoll/dPitch
   float dRoll  = (bmi_data_ok && icm_data_ok) ? (bmi_roll  - icm_roll)  : 0.0f;
   float dPitch = (bmi_data_ok && icm_data_ok) ? (bmi_pitch - icm_pitch) : 0.0f;
 
-  // 7) mismatch gating
   bool dyn = is_dynamic_motion();
   if (!dyn) {
     mismatch_update(dRoll, dPitch);
@@ -561,13 +556,10 @@ void loop() {
     imu_mismatch = (mismatch_counter >= MISMATCH_HITS);
   }
 
-  // 8) failover due to sustained mismatch
   maybe_failover_on_mismatch();
 
-  // 9) Primary output
   float rollP  = (PRIMARY_IMU == IMU_PRIMARY_BMI) ? bmi_roll  : icm_roll;
   float pitchP = (PRIMARY_IMU == IMU_PRIMARY_BMI) ? bmi_pitch : icm_pitch;
-
 
   static uint32_t t_print=0;
   if (millis() - t_print >= 10) {
@@ -597,4 +589,3 @@ void loop() {
     Serial.println(); 
   }
 }
-
