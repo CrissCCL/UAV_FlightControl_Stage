@@ -125,7 +125,7 @@ The following image shows the complete setup of the **prototype version V1**:
 <table>
   <tr>
     <td align="center">
-      <img alt="light control stage" src=https://github.com/user-attachments/assets/99a2fe58-2dc6-4015-a1dc-597217e6dd90" width="550"><br>
+      <img alt="light control stage" src="https://github.com/user-attachments/assets/99a2fe58-2dc6-4015-a1dc-597217e6dd90" width="550"><br>
       <sub> light control stage </sub>
     </td>
     <td align="center">
