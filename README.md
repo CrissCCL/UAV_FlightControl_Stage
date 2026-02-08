@@ -160,11 +160,6 @@ During the test, faults were injected dynamically via firmware commands, without
 The system maintained valid state estimation while transparently switching between sensors, confirming the
 correct operation of the redundancy and failover logic.
 
-
-> Note: The test was performed with the UAV fixed on a test bench.
-> IMU failures were emulated in firmware to ensure repeatability and safety.
-
-
 ### 🧾 Fault Injection Control Interface (Serial Commands)
 
 IMU fault scenarios are triggered via **serial commands**, allowing controlled and repeatable testing without hardware modification.
@@ -190,7 +185,8 @@ Faults are injected at runtime through the **UART serial monitor**, using newlin
 
 This interface enables **deterministic validation of IMU redundancy, fault detection, and failover behavior** under realistic failure conditions.
 
-> The firmware implementation for fault injection is available under `/fault_injection/`.
+> The firmware implementation for fault injection is available under `/test_dual_angle_failover/`.
+
 
 
 ## 🔌 Hardware Interfaces
@@ -250,7 +246,8 @@ The following image shows the complete setup of the **prototype version V1**:
 
 - UAV platform main repository: https://github.com/CrissCCL/DIY_UAV
 - Power stage PCB: https://github.com/CrissCCL/UAV_PowerStage
-- Dual IMU module repository: https://github.com/CrissCCL/UAV_Dual_IMU
+- Dual IMU evaluation module (sensor characterization and early validation):  
+  https://github.com/CrissCCL/UAV_Dual_IMU
 
 ## ⚠️ Disclaimer
 
