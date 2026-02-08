@@ -79,7 +79,76 @@ Dedicated power board:
 - Physically isolated from power stage
 - Mature **V5 hardware revision**, validated through multiple control iterations
 
----
+## 🧪 Dual-IMU Fault Injection & Validation
+
+To validate the robustness of the **redundant dual-IMU architecture**, a **firmware-based fault injection framework** was implemented on the Flight Control Stage.
+
+Instead of relying on physical disconnections or uncontrolled hardware failures, IMU faults are **intentionally emulated in firmware**, enabling deterministic, repeatable, and safe validation of the sensing and fallback logic.
+
+### 🎯 Validation Objectives
+
+- Verify **fault detection** on each IMU (BMI088 / ICM-42605)
+- Validate **primary / secondary IMU selection logic**
+- Confirm correct **telemetry reporting** under fault conditions
+- Observe system behavior during **degraded sensing scenarios**
+
+### 🔧 Emulated Fault Modes
+
+The firmware allows selective injection of failures on either IMU, including:
+
+- IMU not responding (communication failure)
+- Frozen sensor data (stuck output)
+- Corrupted or invalid measurements
+- Forced mismatch between redundant sensors
+
+These modes reproduce realistic sensor failure scenarios without modifying or stressing the hardware.
+
+### 🧠 System Behavior Under Test
+
+During fault injection, the following mechanisms are evaluated:
+
+- IMU health monitoring
+- Mismatch detection between redundant sensors
+- Automatic fallback to the alternate IMU
+- Consistent reporting through UART telemetry and monitoring interfaces
+
+This validation strategy allows early verification of **fault-tolerant sensing behavior** before flight testing.
+
+### ✅ Benefits of Firmware-Based Fault Injection
+
+- Fully repeatable and controllable tests  
+- No physical stress on sensors or connectors  
+- Faster validation cycles  
+- Increased confidence in flight-control sensing reliability  
+
+> This approach is a key step toward a **robust and maintainable flight control sensing architecture**, suitable for real-world UAV operation.
+
+### 📈 Experimental Results — IMU Fault Injection
+
+The following plot shows the system response during **firmware-emulated IMU fault scenarios**.
+
+It illustrates:
+
+- Real-time attitude estimation from both IMUs
+- Detection of inconsistent or invalid sensor data
+- Automatic switching between primary and secondary IMU
+- Continuity of the estimated state during sensor failure events
+
+<p align="center">
+  <img t="imu_failover_test" src="https://github.com/user-attachments/assets/b9fde24f-86cf-4e0f-8dd4-fc9af02aaa6d" width="700">
+</p>
+
+<p align="center">
+  <sub>
+    Dual-IMU fault injection test — mismatch detection and automatic IMU fallback under emulated failure conditions
+  </sub>
+</p>
+
+
+During the test, faults were injected dynamically via firmware commands, without any hardware disconnection.
+The system maintained valid state estimation while transparently switching between sensors, confirming the
+correct operation of the redundancy and failover logic.
+
 
 
 ## 🔌 Hardware Interfaces
