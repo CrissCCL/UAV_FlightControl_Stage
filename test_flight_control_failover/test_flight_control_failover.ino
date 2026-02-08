@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <string.h>
 #include <stdlib.h>
-
+// ---- FIX Arduino autoprototyper (DO NOT DELETE) ----
 enum FaultMode : uint8_t;
 enum ImuSelect : uint8_t;
 // -----------------------------------------------
@@ -16,13 +16,13 @@ enum ImuSelect : uint8_t;
     rollP,pitchP,bmi_roll,bmi_pitch,icm_roll,icm_pitch,dRoll,dPitch,mismatch,primary
     primary: 0=BMI, 1=ICM
 
-  SERIAL IN (comandos, terminados en '\n'):
+  SERIAL IN (commands, ending in '\n'):
     F0             -> sin fallas
     F1             -> BMI dead (bmi_data_ok=0)
     F2             -> ICM dead (icm_data_ok=0)
     F3             -> BMI corrupt (mismatch)
-    F4             -> ICM corrupt
-    F5             -> BMI stuck 
+    F4             -> ICM corrupt (mismatch)
+    F5             -> BMI stuck (ICM freezing)
     F6             -> ICM stuck (ICM freezing)
     F3,5000        -> apply F3 for 5000 ms, return to F0
   =====================================================
@@ -48,7 +48,7 @@ enum FaultMode : uint8_t {
 };
 
 static FaultMode faultMode = FAULT_NONE;
-static uint32_t fault_until_ms = 0; 
+static uint32_t fault_until_ms = 0; // 0 = infinito hasta nuevo comando
 
 static void set_fault(FaultMode m, uint32_t duration_ms) {
   faultMode = m;
@@ -428,8 +428,11 @@ static void parse_serial_fault_cmd() {
 
 // =====================================================
 // Apply fault effects AFTER reading sensors
+// - DEAD: marks data_ok false
+// - STUCK: freezes read values
+// - CORRUPT: slow drift in angles (does NOT touch ax/ay/az -> does not trigger gating)
 // =====================================================
-static void apply_faults() {
+static void apply_faults_to_samples() {
   static bool bmi_stuck_init=false, icm_stuck_init=false;
   static float bmi_ax_s,bmi_ay_s,bmi_az_s,bmi_gx_s,bmi_gy_s,bmi_gz_s;
   static float icm_ax_s,icm_ay_s,icm_az_s,icm_gx_s,icm_gy_s,icm_gz_s;
@@ -446,14 +449,6 @@ static void apply_faults() {
 
     case FAULT_ICM_DEAD:
       icm_data_ok = false;
-      break;
-
-    case FAULT_BMI_CORRUPT:
-      if (bmi_data_ok) { bmi_ax += 0.80f; bmi_ay -= 0.60f; }
-      break;
-
-    case FAULT_ICM_CORRUPT:
-      if (icm_data_ok) { icm_ax -= 0.75f; icm_ay += 0.55f; }
       break;
 
     case FAULT_BMI_STUCK:
@@ -479,6 +474,28 @@ static void apply_faults() {
         icm_gx=icm_gx_s; icm_gy=icm_gy_s; icm_gz=icm_gz_s;
       }
       break;
+
+    case FAULT_BMI_CORRUPT:
+    case FAULT_ICM_CORRUPT:
+      // It is applied after calculating angles (see loop) so as not to affect gating
+      break;
+  }
+}
+
+// Slow drift (deg/s) applied to the roll/pitch of the failed sensor
+// This is realistic “soft-fail”: data responds, but becomes consistently misaligned at rest.
+static void apply_corrupt_drift_to_angles(float dt) {
+  // Adjust these values ​​according to how quickly you want the mismatch to appear.
+  // With 0.6 deg/s, in ~2 s you already have ~1.2 deg of error; with 3-4 s it exceeds 10 deg.
+  const float DRIFT_DEG_S = 0.8f;
+
+  // "Smooth" drift (no noise) so that the counter rises steadily
+  if (faultMode == FAULT_BMI_CORRUPT && bmi_data_ok) {
+    bmi_roll  += DRIFT_DEG_S * dt;
+    bmi_pitch -= 0.7f * DRIFT_DEG_S * dt;
+  } else if (faultMode == FAULT_ICM_CORRUPT && icm_data_ok) {
+    icm_roll  -= DRIFT_DEG_S * dt;
+    icm_pitch += 0.7f * DRIFT_DEG_S * dt;
   }
 }
 
@@ -496,18 +513,23 @@ void loop() {
   parse_serial_fault_cmd();
   fault_tick_auto_clear();
 
+  // dt (para filtros y drift)
   uint32_t t_now = micros();
   float dt = (t_now - t_prev_us) * 1e-6f;
   if (dt <= 0) dt = 0.005f;
   if (dt > 0.05f) dt = 0.005f;
   t_prev_us = t_now;
 
+  // 1) Read both sensors
   imu_update();
-  apply_faults();
 
-  // Failover inmediato si primaria muere
+  // 2) Apply flaws to the samples (dead / stuck)
+  apply_faults_to_samples();
+
+  // 3) Immediate failover if primary dies
   force_failover_if_primary_dead();
 
+  // 4) Complementary angles
   float bmi_roll_acc  = rad2deg(atan2f(bmi_ay, sqrtf(bmi_ax*bmi_ax + bmi_az*bmi_az)));
   float bmi_pitch_acc = -rad2deg(atan2f(bmi_ax, sqrtf(bmi_ay*bmi_ay + bmi_az*bmi_az)));
 
@@ -523,9 +545,14 @@ void loop() {
     icm_pitch = ALPHA*(icm_pitch + icm_gy*dt) + (1.0f-ALPHA)*icm_pitch_acc;
   }
 
-float dRoll  = bmi_roll  - icm_roll;
-float dPitch = bmi_pitch - icm_pitch;
+  // 5) CORRUPT: Slow drift at angles (does NOT touch acc/gyro -> gating remains healthy)
+  apply_corrupt_drift_to_angles(dt);
 
+  // 6) dRoll/dPitch
+  float dRoll  = (bmi_data_ok && icm_data_ok) ? (bmi_roll  - icm_roll)  : 0.0f;
+  float dPitch = (bmi_data_ok && icm_data_ok) ? (bmi_pitch - icm_pitch) : 0.0f;
+
+  // 7) mismatch gating
   bool dyn = is_dynamic_motion();
   if (!dyn) {
     mismatch_update(dRoll, dPitch);
@@ -534,10 +561,13 @@ float dPitch = bmi_pitch - icm_pitch;
     imu_mismatch = (mismatch_counter >= MISMATCH_HITS);
   }
 
+  // 8) failover due to sustained mismatch
   maybe_failover_on_mismatch();
 
+  // 9) Primary output
   float rollP  = (PRIMARY_IMU == IMU_PRIMARY_BMI) ? bmi_roll  : icm_roll;
   float pitchP = (PRIMARY_IMU == IMU_PRIMARY_BMI) ? bmi_pitch : icm_pitch;
+
 
   static uint32_t t_print=0;
   if (millis() - t_print >= 10) {
