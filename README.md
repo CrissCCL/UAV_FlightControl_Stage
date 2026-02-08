@@ -81,6 +81,13 @@ Dedicated power board:
 - Physically isolated from power stage
 - Mature **V5 hardware revision**, validated through multiple control iterations
 
+## 🧪 Tested Platform
+
+- **MCU:** Teensy 4.0  
+- **Test mode:** Bench testing (no flight)  
+- **Fault injection:** Firmware-controlled via UART  
+
+
 ## 🧪 Dual-IMU Fault Injection & Validation
 
 To validate the robustness of the **redundant dual-IMU architecture**, a **firmware-based fault injection framework** was implemented on the Flight Control Stage.
