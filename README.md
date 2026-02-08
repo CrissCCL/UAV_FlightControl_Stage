@@ -109,7 +109,6 @@ Dedicated power board:
 </table>
 
 
-
 ## ⚡ Physical Prototype (V5 Installed on UAV)
 
 The **V5 prototype** is directly integrated into the UAV for **full-system validation**.
@@ -129,11 +128,12 @@ The following image shows the complete setup of the **prototype version V1**:
       <sub> light control stage </sub>
     </td>
     <td align="center">
-        <img  alt="Flight control stage + MCU " src="https://github.com/user-attachments/assets/06ffcd44-064d-4405-b3be-f71d5c1981d4" width="550"><br>
+        <img  alt="Flight control stage + MCU " src="https://github.com/user-attachments/assets/1c74cf11-d5d3-479b-a549-90cbfa393560" width="550"><br>
       <sub> Flight control stage + MCU </sub>
     </td>
   </tr>
 </table>
+
 
 ## 🔗 Related Repositories
 
