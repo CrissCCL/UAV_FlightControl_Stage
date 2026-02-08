@@ -1,0 +1,145 @@
+DUAL IMU FAILOVER – DESIGN RATIONALE AND TEST BEHAVIOR
+======================================================
+
+This project implements a dual-IMU architecture (BMI088 + ICM-42605) with
+automatic failover logic, intended to resemble the behavior of commercial
+multirotor flight controllers as closely as possible.
+
+The purpose of this document is to clarify what the system is designed to do,
+what it intentionally does NOT do, and how the different fault-injection modes
+should be interpreted during testing.
+
+------------------------------------------------------
+1. IMPORTANT DESIGN PRINCIPLE
+------------------------------------------------------
+
+In commercial flight controllers, IMU redundancy is NOT used to switch sensors
+whenever their attitude estimates differ.
+
+Instead, redundancy is used to detect:
+- Sensor loss or communication failure
+- Frozen (stuck) sensors during motion
+- Physically inconsistent or non-evolving data
+- Persistent dynamic divergence indicating sensor malfunction
+
+Static differences between IMUs are NOT considered failures.
+
+------------------------------------------------------
+2. STATIC ATTITUDE DIFFERENCES ARE NOT FAILURES
+------------------------------------------------------
+
+It is normal for two IMUs mounted on the same PCB to report different roll and
+pitch angles when the system is stationary, even if the difference is large
+(e.g. 20–30 degrees).
+
+Typical causes include:
+- Mechanical misalignment between sensors
+- Accelerometer bias or scale differences
+- Different filtering dynamics
+- Manufacturing tolerances
+
+For this reason:
+
+A large but constant dRoll or dPitch while the system is stationary MUST NOT
+trigger a failover.
+
+Triggering failover under these conditions would cause dangerous false positives
+in real flight.
+
+------------------------------------------------------
+3. ROLE OF THE COMPLEMENTARY FILTER
+------------------------------------------------------
+
+Each IMU estimates roll and pitch using a complementary filter:
+
+  angle = alpha * (gyro integration) + (1 - alpha) * accelerometer angle
+
+With alpha ≈ 0.98:
+- Accelerometer offsets are strongly attenuated
+- The angle converges to a stable value
+- Static accelerometer corruption does NOT cause divergence
+
+As a result:
+- Accelerometer offsets produce a bounded attitude error
+- The error does not grow over time
+- This behavior is expected and correct
+
+------------------------------------------------------
+4. FAULT INJECTION MODES – INTENDED MEANING
+------------------------------------------------------
+
+The fault modes are designed to emulate different classes of failures:
+
+F0 – NO FAULT
+Normal operation.
+
+F1 / F2 – IMU DEAD
+The selected IMU stops producing valid data.
+This is a hard failure and should immediately trigger failover.
+
+F3 / F4 – IMU CORRUPT (STATIC)
+Introduces a fixed bias in accelerometer measurements.
+This creates a visible dRoll/dPitch offset, but the error remains bounded.
+This mode is for observation and diagnostics, NOT for triggering failover.
+
+F5 / F6 – IMU STUCK
+The selected IMU outputs frozen accelerometer and gyro data.
+This is a critical failure that should be detected DURING MOTION.
+
+------------------------------------------------------
+5. WHY FAILOVER MAY NOT TRIGGER WHILE STATIONARY
+------------------------------------------------------
+
+If the system is stationary (even if tilted):
+
+- A stuck IMU may still appear coherent
+- Both IMUs observe the same gravity vector
+- No dynamic inconsistency is present
+
+Therefore:
+Failover is NOT expected while stationary.
+
+This matches commercial behavior.
+
+------------------------------------------------------
+6. WHEN FAILOVER SHOULD OCCUR
+------------------------------------------------------
+
+Failover should occur when:
+- The system undergoes motion
+- One IMU responds correctly
+- The other IMU does not evolve accordingly
+- The attitude difference grows dynamically and persists
+
+This applies especially to:
+- F5 / F6 (stuck IMU) during motion
+- F1 / F2 (dead IMU) at any time
+
+------------------------------------------------------
+7. MOTION GATING AND FALSE POSITIVE PREVENTION
+------------------------------------------------------
+
+The mismatch detector is gated during high dynamic motion to prevent false
+positives caused by:
+- Linear accelerations
+- High angular rates
+- Non-gravitational forces
+
+This means:
+- Mismatch accumulation may be temporarily disabled during aggressive motion
+- Detection typically occurs once the system returns to quasi-static conditions
+
+This behavior is intentional and aligned with real-world flight controllers.
+
+------------------------------------------------------
+8. SUMMARY
+------------------------------------------------------
+
+- Large static dRoll/dPitch values are NOT failures
+- Failover is NOT triggered by constant offsets
+- Failover is triggered by loss, freezing, or dynamic inconsistency
+- F3/F4 are diagnostic tools, not hard-failure tests
+- F5/F6 represent realistic failure modes and require motion to manifest
+
+This design prioritizes robustness and avoidance of false positives, following
+principles used in commercial UAV flight controllers.
