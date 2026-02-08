@@ -21,11 +21,13 @@ This revision replaces the previous single-IMU layout with a **redundant dual-IM
 architecture (BMI088 + ICM-42605)** connected through independent I²C buses to improve
 measurement reliability and fault tolerance.
 
+This hardware revision has been validated using a **Teensy 4.0** microcontroller as the target flight-control MCU.
 
 
 ## 📂 Contents
 
 - `/Hardware` → Schematics, PCB layout, Gerbers
+- `/Firmware` → Embedded test firmware (dual-IMU fault injection, validation utilities)
 
 ## 🧩 System Architecture
 
@@ -135,7 +137,7 @@ It illustrates:
 - Continuity of the estimated state during sensor failure events
 
 <p align="center">
-  <img t="imu_failover_test" src="https://github.com/user-attachments/assets/b9fde24f-86cf-4e0f-8dd4-fc9af02aaa6d" width="700">
+  <img alt="imu_failover_test" src="https://github.com/user-attachments/assets/b9fde24f-86cf-4e0f-8dd4-fc9af02aaa6d" width="700">
 </p>
 
 <p align="center">
@@ -143,12 +145,45 @@ It illustrates:
     Dual-IMU fault injection test — mismatch detection and automatic IMU fallback under emulated failure conditions
   </sub>
 </p>
+> Note: The test was performed with the UAV mechanically fixed on a test bench.
+> IMU failures were emulated in firmware to ensure repeatability, safety, and deterministic validation.
 
 
 During the test, faults were injected dynamically via firmware commands, without any hardware disconnection.
 The system maintained valid state estimation while transparently switching between sensors, confirming the
 correct operation of the redundancy and failover logic.
 
+
+> Note: The test was performed with the UAV fixed on a test bench.
+> IMU failures were emulated in firmware to ensure repeatability and safety.
+
+
+### 🧾 Fault Injection Control Interface (Serial Commands)
+
+IMU fault scenarios are triggered via **serial commands**, allowing controlled and repeatable testing without hardware modification.
+
+Faults are injected at runtime through the **UART serial monitor**, using newline-terminated commands (`\n`).
+
+#### Supported Commands
+- F0 -> No fault (normal operation)
+- F1 -> BMI088 dead (bmi_data_ok = 0)
+- F2 -> ICM-42605 dead (icm_data_ok = 0)
+- F3 -> BMI088 data corruption (forces mismatch)
+- F4 -> ICM-42605 data corruption
+- F5 -> BMI088 stuck output (frozen data)
+- F6 -> ICM-42605 stuck output (frozen data)
+- F3,5000 -> Apply F3 for 5000 ms, then automatically return to F0
+
+#### Usage Notes
+
+- All commands must be terminated with `\n`
+- Timed fault injection (`Fx,<time_ms>`) allows transient failure testing
+- Commands can be issued dynamically during operation
+- No hardware reset or reconnection is required between tests
+
+This interface enables **deterministic validation of IMU redundancy, fault detection, and failover behavior** under realistic failure conditions.
+
+> The firmware implementation for fault injection is available under `/fault_injection/`.
 
 
 ## 🔌 Hardware Interfaces
