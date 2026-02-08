@@ -120,10 +120,20 @@ Given the maturity of the control architecture, this stage is deployed directly 
 - system integration  
 - real-time experimentation  
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/e22be73f-2c0d-4ca7-a676-afc88914c077" width="400">
-</p>
+The following image shows the complete setup of the **prototype version V1**:
 
+<table>
+  <tr>
+    <td align="center">
+      <img alt="light control stage" src=https://github.com/user-attachments/assets/99a2fe58-2dc6-4015-a1dc-597217e6dd90" width="550"><br>
+      <sub> light control stage </sub>
+    </td>
+    <td align="center">
+        <img  alt="Flight control stage + MCU " src="https://github.com/user-attachments/assets/06ffcd44-064d-4405-b3be-f71d5c1981d4" width="550"><br>
+      <sub> Flight control stage + MCU </sub>
+    </td>
+  </tr>
+</table>
 
 ## 🔗 Related Repositories
 
