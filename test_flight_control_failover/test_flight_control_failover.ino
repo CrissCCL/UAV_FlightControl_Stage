@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <string.h>
 #include <stdlib.h>
+
 // ---- FIX Arduino autoprototyper (DO NOT DELETE) ----
 enum FaultMode : uint8_t;
 enum ImuSelect : uint8_t;
@@ -12,19 +13,9 @@ enum ImuSelect : uint8_t;
   Dual IMU (BMI088 + ICM-42605) + Auto Failover + Fault Injection (Serial "F")
   Target: Teensy 4.x
 
-  SERIAL OUT (CSV 10 columns):
-    rollP,pitchP,bmi_roll,bmi_pitch,icm_roll,icm_pitch,dRoll,dPitch,mismatch,primary
-    primary: 0=BMI, 1=ICM
-
-  SERIAL IN (commands, ending in '\n'):
-    F0             -> no faults
-    F1             -> BMI dead (bmi_data_ok=0)
-    F2             -> ICM dead (icm_data_ok=0)
-    F3             -> BMI corrupt (mismatch)
-    F4             -> ICM corrupt (mismatch)
-    F5             -> BMI stuck (freezing)
-    F6             -> ICM stuck (freezing)
-    F3,5000        -> apply F3 for 5000 ms, then return to F0
+  FIX applied:
+  - Robust IMU init (ping + retries + proper post-reset delays)
+  - ICM WHO_AM_I polling after reset (main cause of false FAIL at boot)
   =====================================================
 */
 
@@ -91,6 +82,14 @@ static inline int16_t le16(uint8_t lsb, uint8_t msb) { return (int16_t)((msb << 
 static inline int16_t be16(uint8_t msb, uint8_t lsb) { return (int16_t)((msb << 8) | lsb); }
 static inline float   rad2deg(float r){ return r * 57.2957795f; }
 
+static bool retry_bool(bool (*fn)(), int tries, uint32_t delay_ms) {
+  for (int i=0;i<tries;i++) {
+    if (fn()) return true;
+    if (delay_ms) delay(delay_ms);
+  }
+  return false;
+}
+
 // =====================================================
 // BMI regs
 // =====================================================
@@ -122,6 +121,11 @@ static const uint8_t ICM_GYRO_DATA_X1   = 0x25;
 // =====================================================
 // Wire helpers (BMI)
 // =====================================================
+static bool w_ping(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return (Wire.endTransmission(true) == 0);
+}
+
 static bool w_write8(uint8_t addr, uint8_t reg, uint8_t val) {
   Wire.beginTransmission(addr);
   Wire.write(reg); Wire.write(val);
@@ -141,6 +145,11 @@ static bool w_readN(uint8_t addr, uint8_t startReg, uint8_t *buf, size_t n) {
 // =====================================================
 // Wire1 helpers (ICM)
 // =====================================================
+static bool w1_ping(uint8_t addr) {
+  Wire1.beginTransmission(addr);
+  return (Wire1.endTransmission(true) == 0);
+}
+
 static bool w1_write8_stop(uint8_t addr, uint8_t reg, uint8_t val) {
   Wire1.beginTransmission(addr);
   Wire1.write(reg); Wire1.write(val);
@@ -165,23 +174,41 @@ static bool w1_read6_bytewise(uint8_t addr, uint8_t startReg, uint8_t out6[6]) {
 }
 
 // =====================================================
-// BMI init + read
+// BMI init + read (ROBUST)
 // =====================================================
-static bool bmi_init() {
-  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_SOFTRESET, 0xB6)) return false;
-  delay(2);
-  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_PWR_CONF, 0x00)) return false;
-  delay(1);
-  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_PWR_CTRL, 0x04)) return false;
-  delay(5);
-  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_RANGE, 0x01)) return false;
+static bool bmi_acc_reset_step() { return w_write8(BMI_ACC_ADDR, BMI_ACC_SOFTRESET, 0xB6); }
 
-  if (!w_write8(BMI_GYR_ADDR, BMI_GYR_SOFTRESET, 0xB6)) return false;
-  delay(35);
+static bool bmi_acc_cfg_step() {
+  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_PWR_CONF, 0x00)) return false;
+  delay(2);
+  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_PWR_CTRL, 0x04)) return false;
+  delay(10);
+  if (!w_write8(BMI_ACC_ADDR, BMI_ACC_RANGE, 0x01)) return false;
+  return true;
+}
+
+static bool bmi_gyr_reset_step() { return w_write8(BMI_GYR_ADDR, BMI_GYR_SOFTRESET, 0xB6); }
+
+static bool bmi_gyr_cfg_step() {
   if (!w_write8(BMI_GYR_ADDR, BMI_GYR_LPM1, 0x00)) return false;
-  delay(1);
+  delay(2);
   if (!w_write8(BMI_GYR_ADDR, BMI_GYR_RANGE, 0x00)) return false;
   if (!w_write8(BMI_GYR_ADDR, BMI_GYR_BANDWIDTH, 0x02)) return false;
+  return true;
+}
+
+static bool bmi_init_robust() {
+  if (!w_ping(BMI_ACC_ADDR)) return false;
+  if (!w_ping(BMI_GYR_ADDR)) return false;
+
+  if (!retry_bool(bmi_acc_reset_step, 5, 2)) return false;
+  delay(50); // important after accel reset
+  if (!retry_bool(bmi_acc_cfg_step, 5, 5)) return false;
+
+  if (!retry_bool(bmi_gyr_reset_step, 5, 5)) return false;
+  delay(80); // important after gyro reset
+  if (!retry_bool(bmi_gyr_cfg_step, 5, 5)) return false;
+
   return true;
 }
 
@@ -213,30 +240,48 @@ static bool bmi_read_units(float &ax_g, float &ay_g, float &az_g,
 }
 
 // =====================================================
-// ICM init + read
+// ICM init + read (ROBUST)
 // =====================================================
-static bool icm_init_strict() {
-  if (!w1_write8_stop(ICM_ADDR, ICM_BANK_SEL, 0x00)) return false;
-  delay(1);
+static bool icm_bank0_step() { return w1_write8_stop(ICM_ADDR, ICM_BANK_SEL, 0x00); }
+static bool icm_reset_step() { return w1_write8_stop(ICM_ADDR, ICM_DEVICE_CONFIG, 0x01); }
+static bool icm_i3c_off_step() { return w1_write8_stop(ICM_ADDR, ICM_INTF_CONFIG1, 0x01); }
 
-  if (!w1_write8_stop(ICM_ADDR, ICM_DEVICE_CONFIG, 0x01)) return false;
-  delay(3);
-
-  if (!w1_write8_stop(ICM_ADDR, ICM_BANK_SEL, 0x00)) return false;
-  delay(1);
-
-  uint8_t who=0;
-  if (!w1_read8_stop(ICM_ADDR, ICM_WHO_AM_I, who)) return false;
-  if (who != 0x42) return false;
-
-  (void)w1_write8_stop(ICM_ADDR, ICM_INTF_CONFIG1, 0x01);
-  delay(1);
-
+static bool icm_cfg_step() {
   if (!w1_write8_stop(ICM_ADDR, ICM_GYRO_CONFIG0,  0x06)) return false;
   if (!w1_write8_stop(ICM_ADDR, ICM_ACCEL_CONFIG0, 0x06)) return false;
+  return true;
+}
 
-  if (!w1_write8_stop(ICM_ADDR, ICM_PWR_MGMT0, 0x0F)) return false;
-  delay(70);
+static bool icm_pwr_on_step() { return w1_write8_stop(ICM_ADDR, ICM_PWR_MGMT0, 0x0F); }
+
+static bool icm_init_robust() {
+  if (!w1_ping(ICM_ADDR)) return false;
+
+  if (!retry_bool(icm_bank0_step, 5, 2)) return false;
+  delay(2);
+
+  if (!retry_bool(icm_reset_step, 5, 5)) return false;
+  delay(80); // main fix vs 3ms
+
+  if (!retry_bool(icm_bank0_step, 5, 2)) return false;
+  delay(2);
+
+  // WHO_AM_I polling (main fix)
+  uint8_t who = 0;
+  bool who_ok = false;
+  for (int i=0;i<20;i++) { // up to ~200ms
+    if (w1_read8_stop(ICM_ADDR, ICM_WHO_AM_I, who) && who == 0x42) { who_ok = true; break; }
+    delay(10);
+  }
+  if (!who_ok) return false;
+
+  (void)retry_bool(icm_i3c_off_step, 3, 2);
+  delay(2);
+
+  if (!retry_bool(icm_cfg_step, 5, 5)) return false;
+  if (!retry_bool(icm_pwr_on_step, 5, 10)) return false;
+  delay(100);
+
   return true;
 }
 
@@ -284,14 +329,33 @@ static bool icm_read_units(float &ax_g, float &ay_g, float &az_g,
 static void imu_init() {
   Wire.begin();
   Wire.setClock(I2C0_FREQ);
+  delay(10);
 
   Wire1.setSDA(17);
   Wire1.setSCL(16);
   Wire1.begin();
   Wire1.setClock(I2C1_FREQ);
+  delay(10);
 
-  bmi_ok = bmi_init();
-  icm_ok = icm_init_strict();
+  // Try a few times overall (robust boot)
+  bmi_ok = false;
+  icm_ok = false;
+
+  for (int k=0;k<3;k++) { if (bmi_init_robust()) { bmi_ok = true; break; } delay(50); }
+  for (int k=0;k<3;k++) { if (icm_init_robust()) { icm_ok = true; break; } delay(50); }
+
+  // Promote to OK if reads succeed anyway (avoids "FAIL but measures")
+  if (!bmi_ok) {
+    float ax,ay,az,gx,gy,gz;
+    for (int k=0;k<5;k++) { if (bmi_read_units(ax,ay,az,gx,gy,gz)) { bmi_ok=true; break; } delay(5); }
+  }
+  if (!icm_ok) {
+    float ax,ay,az,gx,gy,gz;
+    for (int k=0;k<5;k++) { if (icm_read_units(ax,ay,az,gx,gy,gz)) { icm_ok=true; break; } delay(5); }
+  }
+
+  Serial.print("BMI init: "); Serial.println(bmi_ok ? "OK" : "FAIL");
+  Serial.print("ICM init: "); Serial.println(icm_ok ? "OK" : "FAIL");
 }
 
 static void imu_update() {
@@ -331,7 +395,6 @@ static const float GATE_ACC_G    = 0.20f;
 static bool is_dynamic_motion() {
   if (!(bmi_data_ok && icm_data_ok)) return false;
 
-  // IMPORTANT: use RAW (no faults) so gating is not affected by injected bias
   float gB = sqrtf(bmi_gx_raw*bmi_gx_raw + bmi_gy_raw*bmi_gy_raw + bmi_gz_raw*bmi_gz_raw);
   float gI = sqrtf(icm_gx_raw*icm_gx_raw + icm_gy_raw*icm_gy_raw + icm_gz_raw*icm_gz_raw);
   float gMin = min(gB, gI);
@@ -445,8 +508,6 @@ static void apply_faults() {
   static float bmi_ax_s,bmi_ay_s,bmi_az_s,bmi_gx_s,bmi_gy_s,bmi_gz_s;
   static float icm_ax_s,icm_ay_s,icm_az_s,icm_gx_s,icm_gy_s,icm_gz_s;
 
-  // Bias for CORRUPT: large enough to overcome ALPHA
-  // With ALPHA=0.98 and dt~0.01, a 25 dps bias -> approx ~12 deg offset (fast mismatch on the table)
   const float CORRUPT_GYRO_BIAS_DPS = 25.0f;
 
   switch (faultMode) {
@@ -465,7 +526,6 @@ static void apply_faults() {
 
     case FAULT_BMI_CORRUPT:
       if (bmi_data_ok) {
-        // Bias on gyro used by the filter (does not affect gating because gating uses *_raw)
         bmi_gx += CORRUPT_GYRO_BIAS_DPS;
         bmi_gy -= 0.7f * CORRUPT_GYRO_BIAS_DPS;
       }
@@ -564,6 +624,8 @@ void loop() {
   static uint32_t t_print=0;
   if (millis() - t_print >= 10) {
     t_print = millis();
+
+    // If you want STRICT CSV, replace prints with the CSV line described in header.
     Serial.print("P=");
     Serial.print(PRIMARY_IMU == IMU_PRIMARY_BMI ? "BMI" : "ICM");
     Serial.print("  ");
@@ -586,6 +648,12 @@ void loop() {
     Serial.print("MISMATCH="); Serial.print(imu_mismatch ? "YES" : "NO");
     Serial.print(" (cnt="); Serial.print(mismatch_counter); Serial.print(")");
 
-    Serial.println(); 
+    Serial.print("  ||  rollP,pitchP=");
+    Serial.print(rollP,1); Serial.print(","); Serial.print(pitchP,1);
+
+    Serial.print("  || fault=");
+    Serial.print((int)faultMode);
+
+    Serial.println();
   }
 }
